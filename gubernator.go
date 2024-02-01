@@ -396,6 +396,21 @@ func (s *V1Instance) getGlobalRateLimit(ctx context.Context, req *RateLimitReq) 
 		tracing.EndScope(ctx, err)
 	}()
 
+	item, ok, err := s.workerPool.GetCacheItem(ctx, req.HashKey())
+	if err != nil {
+		countError(err, "Error in workerPool.GetCacheItem")
+		return nil, errors.Wrap(err, "during in workerPool.GetCacheItem")
+	}
+	if ok {
+		// Global rate limits are always stored as RateLimitResp regardless of algorithm
+		rl, ok := item.Value.(*RateLimitResp)
+		if ok {
+			return rl, nil
+		}
+		// We get here if the owning node hasn't asynchronously forwarded it's updates to us yet and
+		// our cache still holds the rate limit we created on the first hit.
+	}
+
 	cpy := proto.Clone(req).(*RateLimitReq)
 	cpy.Behavior = Behavior_NO_BATCHING
 
