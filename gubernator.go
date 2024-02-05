@@ -395,22 +395,23 @@ func (s *V1Instance) getGlobalRateLimit(ctx context.Context, req *RateLimitReq) 
 		}
 		tracing.EndScope(ctx, err)
 	}()
-
-	item, ok, err := s.workerPool.GetCacheItem(ctx, req.HashKey())
-	if err != nil {
-		countError(err, "Error in workerPool.GetCacheItem")
-		return nil, errors.Wrap(err, "during in workerPool.GetCacheItem")
-	}
-	if ok {
-		// Global rate limits are always stored as RateLimitResp regardless of algorithm
-		rl, ok := item.Value.(*RateLimitResp)
-		if ok {
-			return rl, nil
+	/*
+		item, ok, err := s.workerPool.GetCacheItem(ctx, req.HashKey())
+		if err != nil {
+			countError(err, "Error in workerPool.GetCacheItem")
+			return nil, errors.Wrap(err, "during in workerPool.GetCacheItem")
 		}
-		// We get here if the owning node hasn't asynchronously forwarded it's updates to us yet and
-		// our cache still holds the rate limit we created on the first hit.
-	}
 
+		if ok {
+			// Global rate limits are always stored as RateLimitResp regardless of algorithm
+			rl, ok := item.Value.(*RateLimitResp)
+			if ok {
+				return rl, nil
+			}
+			// We get here if the owning node hasn't asynchronously forwarded it's updates to us yet and
+			// our cache still holds the rate limit we created on the first hit.
+		}
+	*/
 	cpy := proto.Clone(req).(*RateLimitReq)
 	cpy.Behavior = Behavior_NO_BATCHING
 
@@ -427,11 +428,29 @@ func (s *V1Instance) getGlobalRateLimit(ctx context.Context, req *RateLimitReq) 
 // UpdatePeerGlobals updates the local cache with a list of global rate limits. This method should only
 // be called by a peer who is the owner of a global rate limit.
 func (s *V1Instance) UpdatePeerGlobals(ctx context.Context, r *UpdatePeerGlobalsReq) (*UpdatePeerGlobalsResp, error) {
+	now := MillisecondNow()
 	for _, g := range r.Globals {
+		var v interface{}
+		// how does DURATION work for token bucket!?
+		switch g.Algorithm {
+		case Algorithm_LEAKY_BUCKET:
+			v = LeakyBucketItem{
+				Remaining: float64(g.Status.Remaining),
+				Limit:     g.Status.Limit,
+				UpdatedAt: now,
+			}
+		case Algorithm_TOKEN_BUCKET:
+			v = TokenBucketItem{
+				Status:    g.Status.Status,
+				Limit:     g.Status.Limit,
+				Remaining: g.Status.Remaining,
+				CreatedAt: now,
+			}
+		}
 		item := &CacheItem{
 			ExpireAt:  g.Status.ResetTime + 100000,
 			Algorithm: g.Algorithm,
-			Value:     g.Status,
+			Value:     v,
 			Key:       g.Key,
 		}
 		err := s.workerPool.AddCacheItem(ctx, g.Key, item)
