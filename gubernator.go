@@ -447,6 +447,7 @@ func (s *V1Instance) UpdatePeerGlobals(ctx context.Context, r *UpdatePeerGlobals
 				CreatedAt: now,
 			}
 		}
+		s.log.Infof("ELBUO: peer receiving from owner key %s remaining %v reset", g.Key, g.Status.Remaining, g.Status.ResetTime)
 		item := &CacheItem{
 			ExpireAt:  g.Status.ResetTime + 100000,
 			Algorithm: g.Algorithm,
