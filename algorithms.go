@@ -18,6 +18,7 @@ package gubernator
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/mailgun/holster/v4/clock"
 	"github.com/prometheus/client_golang/prometheus"
@@ -259,6 +260,7 @@ func leakyBucket(ctx context.Context, s Store, c Cache, r *RateLimitReq) (resp *
 	// Get rate limit from cache.
 	hashKey := r.HashKey()
 	item, ok := c.GetItem(hashKey)
+	fmt.Printf("ELBUO: key: '%s', item found: %v\n", hashKey, ok)
 
 	if s != nil && !ok {
 		// Cache miss.
@@ -296,6 +298,7 @@ func leakyBucket(ctx context.Context, s Store, c Cache, r *RateLimitReq) (resp *
 
 		b, ok := item.Value.(*LeakyBucketItem)
 		if !ok {
+			fmt.Printf("ELBUO: evited %s due to not matching type of leaky", hashKey)
 			// Client switched algorithms; perhaps due to a migration?
 			c.Remove(hashKey)
 
@@ -346,6 +349,8 @@ func leakyBucket(ctx context.Context, s Store, c Cache, r *RateLimitReq) (resp *
 			c.UpdateExpiration(r.HashKey(), now+duration)
 		}
 
+		fmt.Printf("ELBUO: key: %s, before drip: %d", hashKey, b.Remaining)
+
 		// Calculate how much leaked out of the bucket since the last time we leaked a hit
 		elapsed := now - b.UpdatedAt
 		leak := float64(elapsed) / rate
@@ -386,6 +391,7 @@ func leakyBucket(ctx context.Context, s Store, c Cache, r *RateLimitReq) (resp *
 			b.Remaining = 0
 			rl.Remaining = int64(b.Remaining)
 			rl.ResetTime = now + (rl.Limit-rl.Remaining)*int64(rate)
+			fmt.Printf("ELBUO: key: %s, after drip: %d line: 394", hashKey, b.Remaining)
 			return rl, nil
 		}
 
@@ -395,6 +401,7 @@ func leakyBucket(ctx context.Context, s Store, c Cache, r *RateLimitReq) (resp *
 			b.Remaining = 0
 			rl.Remaining = int64(b.Remaining)
 			rl.Status = Status_OVER_LIMIT
+			fmt.Printf("ELBUO: key: %s, after drip: %d line: 404", hashKey, b.Remaining)
 			return rl, nil
 		}
 
@@ -406,6 +413,7 @@ func leakyBucket(ctx context.Context, s Store, c Cache, r *RateLimitReq) (resp *
 		b.Remaining -= float64(r.Hits)
 		rl.Remaining = int64(b.Remaining)
 		rl.ResetTime = now + (rl.Limit-rl.Remaining)*int64(rate)
+		fmt.Printf("ELBUO: key: %s, after drip: %d line: 416", hashKey, b.Remaining)
 		return rl, nil
 	}
 
