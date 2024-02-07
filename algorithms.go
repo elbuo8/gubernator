@@ -413,7 +413,7 @@ func leakyBucket(ctx context.Context, s Store, c Cache, r *RateLimitReq) (resp *
 		b.Remaining -= float64(r.Hits)
 		rl.Remaining = int64(b.Remaining)
 		rl.ResetTime = now + (rl.Limit-rl.Remaining)*int64(rate)
-		fmt.Printf("ELBUO: key: %s, after drip: %d line: 416\n", hashKey, b.Remaining)
+		fmt.Printf("ELBUO: key: %s, after drip: %d - %d line: 416\n", hashKey, b.Remaining, rl.Remaining)
 		return rl, nil
 	}
 
