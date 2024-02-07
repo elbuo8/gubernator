@@ -430,28 +430,19 @@ func (s *V1Instance) getGlobalRateLimit(ctx context.Context, req *RateLimitReq) 
 func (s *V1Instance) UpdatePeerGlobals(ctx context.Context, r *UpdatePeerGlobalsReq) (*UpdatePeerGlobalsResp, error) {
 	now := MillisecondNow()
 	for _, g := range r.Globals {
-		var v interface{}
 		// how does DURATION work for token bucket!?
-		switch g.Algorithm {
-		case Algorithm_LEAKY_BUCKET:
-			v = LeakyBucketItem{
-				Remaining: float64(g.Status.Remaining),
-				Limit:     g.Status.Limit,
-				UpdatedAt: now,
-			}
-		case Algorithm_TOKEN_BUCKET:
-			v = TokenBucketItem{
-				Status:    g.Status.Status,
-				Limit:     g.Status.Limit,
-				Remaining: g.Status.Remaining,
-				CreatedAt: now,
-			}
+		// TODO: fix regular bucket
+		b := LeakyBucketItem{
+			Remaining: float64(g.Status.Remaining),
+			Limit:     g.Status.Limit,
+			UpdatedAt: now,
 		}
+
 		s.log.Infof("ELBUO: peer receiving from owner key %s remaining %v reset %d with type %T", g.Key, g.Status.Remaining, g.Status.ResetTime, v)
 		item := &CacheItem{
 			ExpireAt:  g.Status.ResetTime + 100000,
 			Algorithm: g.Algorithm,
-			Value:     &v,
+			Value:     &b,
 			Key:       g.Key,
 		}
 		err := s.workerPool.AddCacheItem(ctx, g.Key, item)
