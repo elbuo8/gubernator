@@ -451,7 +451,7 @@ func (s *V1Instance) UpdatePeerGlobals(ctx context.Context, r *UpdatePeerGlobals
 		item := &CacheItem{
 			ExpireAt:  g.Status.ResetTime + 100000,
 			Algorithm: g.Algorithm,
-			Value:     v,
+			Value:     &v,
 			Key:       g.Key,
 		}
 		err := s.workerPool.AddCacheItem(ctx, g.Key, item)
