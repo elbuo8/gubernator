@@ -442,6 +442,7 @@ func (s *V1Instance) UpdatePeerGlobals(ctx context.Context, r *UpdatePeerGlobals
 			item.Value = &LeakyBucketItem{
 				Remaining: float64(g.Status.Remaining),
 				Limit:     g.Status.Limit,
+				Burst:     g.Status.Limit,
 				UpdatedAt: now,
 			}
 		case Algorithm_TOKEN_BUCKET:
