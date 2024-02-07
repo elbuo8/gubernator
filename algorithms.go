@@ -312,12 +312,14 @@ func leakyBucket(ctx context.Context, s Store, c Cache, r *RateLimitReq) (resp *
 		fmt.Printf("ELBUO: bucket as found %v", b)
 
 		if HasBehavior(r.Behavior, Behavior_RESET_REMAINING) {
+			fmt.Printf("ELBUO: reset remaining")
 			b.Remaining = float64(r.Burst)
 		}
 
 		// Update burst, limit and duration if they changed
 		if b.Burst != r.Burst {
 			if r.Burst > int64(b.Remaining) {
+				fmt.Printf("ELBUO: burst remaining")
 				b.Remaining = float64(r.Burst)
 			}
 			b.Burst = r.Burst
