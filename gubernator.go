@@ -431,20 +431,29 @@ func (s *V1Instance) UpdatePeerGlobals(ctx context.Context, r *UpdatePeerGlobals
 	now := MillisecondNow()
 	for _, g := range r.Globals {
 		// how does DURATION work for token bucket!?
-		// TODO: fix regular bucket
-		b := LeakyBucketItem{
-			Remaining: float64(g.Status.Remaining),
-			Limit:     g.Status.Limit,
-			UpdatedAt: now,
-		}
-
-		s.log.Infof("ELBUO: peer receiving from owner key %s remaining %v reset %d with type %T", g.Key, g.Status.Remaining, g.Status.ResetTime, v)
 		item := &CacheItem{
 			ExpireAt:  g.Status.ResetTime + 100000,
 			Algorithm: g.Algorithm,
-			Value:     &b,
 			Key:       g.Key,
 		}
+		switch g.Algorithm {
+		case Algorithm_LEAKY_BUCKET:
+			item.Value = &LeakyBucketItem{
+				Remaining: float64(g.Status.Remaining),
+				Limit:     g.Status.Limit,
+				UpdatedAt: now,
+			}
+		case Algorithm_TOKEN_BUCKET:
+			item.Value = &TokenBucketItem{
+				Status:    g.Status.Status,
+				Limit:     g.Status.Limit,
+				Remaining: g.Status.Remaining,
+				CreatedAt: now,
+			}
+		}
+
+		s.log.Infof("ELBUO: peer receiving from owner key %s remaining %v reset %d with type %T", g.Key, g.Status.Remaining, g.Status.ResetTime, item.Value)
+
 		err := s.workerPool.AddCacheItem(ctx, g.Key, item)
 		if err != nil {
 			return nil, errors.Wrap(err, "Error in workerPool.AddCacheItem")
