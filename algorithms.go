@@ -309,6 +309,8 @@ func leakyBucket(ctx context.Context, s Store, c Cache, r *RateLimitReq) (resp *
 			return leakyBucketNewItem(ctx, s, c, r)
 		}
 
+		fmt.Printf("ELBUO: bucket as found %v", b)
+
 		if HasBehavior(r.Behavior, Behavior_RESET_REMAINING) {
 			b.Remaining = float64(r.Burst)
 		}
@@ -349,7 +351,7 @@ func leakyBucket(ctx context.Context, s Store, c Cache, r *RateLimitReq) (resp *
 			c.UpdateExpiration(r.HashKey(), now+duration)
 		}
 
-		fmt.Printf("ELBUO: key: %s, before drip: %d", hashKey, b.Remaining)
+		fmt.Printf("ELBUO: key: %s, before drip: %f\n", hashKey, b.Remaining)
 
 		// Calculate how much leaked out of the bucket since the last time we leaked a hit
 		elapsed := now - b.UpdatedAt
@@ -391,7 +393,7 @@ func leakyBucket(ctx context.Context, s Store, c Cache, r *RateLimitReq) (resp *
 			b.Remaining = 0
 			rl.Remaining = int64(b.Remaining)
 			rl.ResetTime = now + (rl.Limit-rl.Remaining)*int64(rate)
-			fmt.Printf("ELBUO: key: %s, after drip: %d line: 394\n", hashKey, b.Remaining)
+			fmt.Printf("ELBUO: key: %s, after drip: %f line: 394\n", hashKey, b.Remaining)
 			return rl, nil
 		}
 
@@ -401,7 +403,7 @@ func leakyBucket(ctx context.Context, s Store, c Cache, r *RateLimitReq) (resp *
 			b.Remaining = 0
 			rl.Remaining = int64(b.Remaining)
 			rl.Status = Status_OVER_LIMIT
-			fmt.Printf("ELBUO: key: %s, after drip: %d line: 404\n", hashKey, b.Remaining)
+			fmt.Printf("ELBUO: key: %s, after drip: %f line: 404\n", hashKey, b.Remaining)
 			return rl, nil
 		}
 
@@ -413,7 +415,7 @@ func leakyBucket(ctx context.Context, s Store, c Cache, r *RateLimitReq) (resp *
 		b.Remaining -= float64(r.Hits)
 		rl.Remaining = int64(b.Remaining)
 		rl.ResetTime = now + (rl.Limit-rl.Remaining)*int64(rate)
-		fmt.Printf("ELBUO: key: %s, after drip: %d - %d line: 416\n", hashKey, b.Remaining, rl.Remaining)
+		fmt.Printf("ELBUO: key: %s, after drip: %f - %d line: 416\n", hashKey, b.Remaining, rl.Remaining)
 		return rl, nil
 	}
 

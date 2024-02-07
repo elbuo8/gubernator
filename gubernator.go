@@ -395,6 +395,7 @@ func (s *V1Instance) getGlobalRateLimit(ctx context.Context, req *RateLimitReq) 
 		}
 		tracing.EndScope(ctx, err)
 	}()
+
 	/*
 		item, ok, err := s.workerPool.GetCacheItem(ctx, req.HashKey())
 		if err != nil {
