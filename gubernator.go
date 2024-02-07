@@ -431,7 +431,6 @@ func (s *V1Instance) getGlobalRateLimit(ctx context.Context, req *RateLimitReq) 
 func (s *V1Instance) UpdatePeerGlobals(ctx context.Context, r *UpdatePeerGlobalsReq) (*UpdatePeerGlobalsResp, error) {
 	now := MillisecondNow()
 	for _, g := range r.Globals {
-		// how does DURATION work for token bucket!?
 		item := &CacheItem{
 			ExpireAt:  g.Status.ResetTime + 100000,
 			Algorithm: g.Algorithm,
@@ -453,9 +452,6 @@ func (s *V1Instance) UpdatePeerGlobals(ctx context.Context, r *UpdatePeerGlobals
 				CreatedAt: now,
 			}
 		}
-
-		s.log.Infof("ELBUO: peer receiving from owner key %s remaining %v reset %d with type %T", g.Key, g.Status.Remaining, g.Status.ResetTime, item.Value)
-
 		err := s.workerPool.AddCacheItem(ctx, g.Key, item)
 		if err != nil {
 			return nil, errors.Wrap(err, "Error in workerPool.AddCacheItem")

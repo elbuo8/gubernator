@@ -18,7 +18,6 @@ package gubernator
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/mailgun/holster/v4/clock"
 	"github.com/prometheus/client_golang/prometheus"
@@ -260,7 +259,6 @@ func leakyBucket(ctx context.Context, s Store, c Cache, r *RateLimitReq) (resp *
 	// Get rate limit from cache.
 	hashKey := r.HashKey()
 	item, ok := c.GetItem(hashKey)
-	fmt.Printf("ELBUO: key: '%s', item found: %v\n", hashKey, ok)
 
 	if s != nil && !ok {
 		// Cache miss.
@@ -298,7 +296,6 @@ func leakyBucket(ctx context.Context, s Store, c Cache, r *RateLimitReq) (resp *
 
 		b, ok := item.Value.(*LeakyBucketItem)
 		if !ok {
-			fmt.Printf("ELBUO: evicted %s due to not matching type of leaky\n", hashKey)
 			// Client switched algorithms; perhaps due to a migration?
 			c.Remove(hashKey)
 
@@ -309,17 +306,13 @@ func leakyBucket(ctx context.Context, s Store, c Cache, r *RateLimitReq) (resp *
 			return leakyBucketNewItem(ctx, s, c, r)
 		}
 
-		fmt.Printf("ELBUO: bucket as found %v", b)
-
 		if HasBehavior(r.Behavior, Behavior_RESET_REMAINING) {
-			fmt.Printf("ELBUO: reset remaining")
 			b.Remaining = float64(r.Burst)
 		}
 
 		// Update burst, limit and duration if they changed
 		if b.Burst != r.Burst {
 			if r.Burst > int64(b.Remaining) {
-				fmt.Printf("ELBUO: burst remaining")
 				b.Remaining = float64(r.Burst)
 			}
 			b.Burst = r.Burst
@@ -352,8 +345,6 @@ func leakyBucket(ctx context.Context, s Store, c Cache, r *RateLimitReq) (resp *
 		if r.Hits != 0 {
 			c.UpdateExpiration(r.HashKey(), now+duration)
 		}
-
-		fmt.Printf("ELBUO: key: %s, before drip: %f\n", hashKey, b.Remaining)
 
 		// Calculate how much leaked out of the bucket since the last time we leaked a hit
 		elapsed := now - b.UpdatedAt
@@ -395,7 +386,6 @@ func leakyBucket(ctx context.Context, s Store, c Cache, r *RateLimitReq) (resp *
 			b.Remaining = 0
 			rl.Remaining = int64(b.Remaining)
 			rl.ResetTime = now + (rl.Limit-rl.Remaining)*int64(rate)
-			fmt.Printf("ELBUO: key: %s, after drip: %f line: 394\n", hashKey, b.Remaining)
 			return rl, nil
 		}
 
@@ -405,7 +395,6 @@ func leakyBucket(ctx context.Context, s Store, c Cache, r *RateLimitReq) (resp *
 			b.Remaining = 0
 			rl.Remaining = int64(b.Remaining)
 			rl.Status = Status_OVER_LIMIT
-			fmt.Printf("ELBUO: key: %s, after drip: %f line: 404\n", hashKey, b.Remaining)
 			return rl, nil
 		}
 
@@ -417,7 +406,6 @@ func leakyBucket(ctx context.Context, s Store, c Cache, r *RateLimitReq) (resp *
 		b.Remaining -= float64(r.Hits)
 		rl.Remaining = int64(b.Remaining)
 		rl.ResetTime = now + (rl.Limit-rl.Remaining)*int64(rate)
-		fmt.Printf("ELBUO: key: %s, after drip: %f - %d line: 416\n", hashKey, b.Remaining, rl.Remaining)
 		return rl, nil
 	}
 
